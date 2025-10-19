@@ -1,0 +1,150 @@
+{
+  "Abhishek": {
+    "Monday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Tuesday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Wednesday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Thursday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Friday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Saturday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Sunday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ]
+  },
+  "Aaradhya": {
+    "Monday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Tuesday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Wednesday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Thursday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Friday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Saturday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Sunday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ]
+  },
+  "Peter": {
+    "Monday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Tuesday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Wednesday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Thursday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Friday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Saturday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Sunday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  "Charlie": {
+    "Monday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Tuesday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Wednesday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Thursday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ],
+    "Friday": [
+      "afternoon",
+      "morning",
+      "evening"
+    ],
+    "Saturday": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "Sunday": [
+      "evening",
+      "morning",
+      "afternoon"
+    ]
+  }
+}
