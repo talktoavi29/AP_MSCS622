@@ -1,258 +1,154 @@
-# scheduler-python/main.py
-from __future__ import annotations
-import json, random, csv, os
-from typing import Dict, List, Tuple
+import random
 
-# ----------------- CONFIG -----------------
 DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 SHIFTS = ["morning","afternoon","evening"]
+
 MIN_PER_SHIFT = 2
-MAX_PER_SHIFT = 3              # capacity that can trigger conflicts
+MAX_PER_SHIFT = 3
 MAX_DAYS_PER_EMPLOYEE = 5
-RANDOM_SEED = 42               # set to None for non-deterministic
-# -----------------------------------------
 
-VALID_TOKENS = {
-    "morning":"morning", "m":"morning",
-    "afternoon":"afternoon", "a":"afternoon",
-    "evening":"evening", "e":"evening",
-    "off":"off", "o":"off",
-}
-
-def ask(prompt: str) -> str:
-    try:
-        return input(prompt)
-    except EOFError:
-        return ""
-
-def parse_ranking(raw: str) -> List[str] | None:
-    s = raw.strip().lower()
-    if not s:
+def parse_ranking(s):
+    s = s.strip().lower()
+    if s == "" or s == "off" or s == "o":
         return ["off"]
-    # support separators
-    for sep in [",","/","|"]:
-        s = s.replace(sep, ">")
+    s = s.replace(",", ">").replace("/", ">").replace("|", ">")
     parts = [p.strip() for p in s.split(">") if p.strip()]
-    out: List[str] = []
-    for p in parts:
-        if p in VALID_TOKENS:
-            out.append(VALID_TOKENS[p])
-        else:
-            return None  # invalid token -> reject
-    # uniq and expand
-    uniq: List[str] = []
-    for v in out:
-        if v not in uniq:
-            uniq.append(v)
-    if not uniq or "off" in uniq:
-        return ["off"]
-    # fill missing in default order
-    for sh in SHIFTS:
-        if sh not in uniq:
-            uniq.append(sh)
-    return uniq
 
-def collect_preferences() -> Dict[str, Dict[str, List[str]]]:
-    print("Enter employee names separated by commas (e.g., Alice,Bob,Charlie)")
-    raw_names = ask("> ").strip()
-    while not raw_names:
+    out = []
+    for p in parts:
+        if p in ["morning","m"]:
+            val = "morning"
+        elif p in ["afternoon","a"]:
+            val = "afternoon"
+        elif p in ["evening","e"]:
+            val = "evening"
+        elif p in ["off","o"]:
+            val = "off"
+        else:
+            return None
+        if val not in out:
+            out.append(val)
+
+    if not out or "off" in out:
+        return ["off"]
+
+    for sh in SHIFTS:
+        if sh not in out:
+            out.append(sh)
+    return out
+
+def read_names():
+    while True:
+        raw = input("Enter employee names (comma-separated): ").strip()
+        if raw:
+            names = [x.strip() for x in raw.split(",") if x.strip()]
+            if names:
+                return names
         print("Please enter at least one name.")
-        raw_names = ask("> ").strip()
-    names = [n.strip() for n in raw_names.split(",") if n.strip()]
-    prefs: Dict[str, Dict[str, List[str]]] = {name: {} for name in names}
-    print("\nEnter a preferred shift *per day* for each employee.")
-    print("Accepted: morning/afternoon/evening/off or ranking like 'm>a>e'. Blank = off.\n")
-    for name in names:
-        print(f"\n-- {name} --")
-        for day in DAYS:
+
+def collect_preferences(names):
+    prefs = {name: {} for name in names}
+    print("\nEnter per-day preference for each person.")
+    print("Use morning/afternoon/evening/off or ranking like m>a>e. Blank = off.\n")
+    for n in names:
+        print(f"-- {n} --")
+        for d in DAYS:
             while True:
-                raw = ask(f"{day} preference: ")
-                ranked = parse_ranking(raw)
-                if ranked is not None:
-                    prefs[name][day] = ranked
+                raw = input(f"{d} preference: ")
+                if raw.strip() == "":
+                    prefs[n][d] = ["off"]
                     break
-                print("  Invalid. Use morning/afternoon/evening/off or ranking like m>a>e.")
+                r = parse_ranking(raw)
+                if r is not None:
+                    prefs[n][d] = r
+                    break
+                else:
+                    print("  Invalid. Try: morning, afternoon, evening, off, or m>a>e.")
     return prefs
 
-def try_assign(day: str, shift: str, name: str,
-               schedule, assigned_days_count, daily_assigned) -> bool:
-    """Try assigning (day, shift) if capacity & per-day constraints allow."""
-    if name in daily_assigned[day]:
+def try_assign(schedule, assigned_today, days_count, day, shift, name):
+    if name in assigned_today:
         return False
-    if assigned_days_count[name] >= MAX_DAYS_PER_EMPLOYEE:
+    if days_count[name] >= MAX_DAYS_PER_EMPLOYEE:
         return False
     if len(schedule[day][shift]) >= MAX_PER_SHIFT:
         return False
     schedule[day][shift].append(name)
-    daily_assigned[day].add(name)
-    assigned_days_count[name] += 1
+    assigned_today.add(name)
+    days_count[name] += 1
     return True
 
-def schedule_week(preferences: Dict[str, Dict[str, List[str]]],
-                  seed: int | None = RANDOM_SEED
-) -> Tuple[Dict[str, Dict[str, List[str]]], Dict[str,int]]:
-    rng = random.Random(seed)
-    employees = list(preferences.keys())
+def main():
+    random.seed(42)
 
-    # Initialize structures
-    schedule = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
-    assigned_days_count = {name: 0 for name in employees}
-    # track who is assigned on a given day
-    daily_assigned = {day: set() for day in DAYS}
+    names = read_names()
+    prefs = collect_preferences(names)
 
-    # Deferred (couldn't place today): map of day_index+1 -> list of employees
-    deferred_next_day = {d: [] for d in range(len(DAYS))}
+    schedule = {d: {s: [] for s in SHIFTS} for d in DAYS}
+    days_count = {n: 0 for n in names}
+    deferred = {i: [] for i in range(len(DAYS))}
 
-    # iterate days
     for di, day in enumerate(DAYS):
-        # 1) bring in deferrals from previous day
-        incoming = deferred_next_day.get(di, [])
-        rng.shuffle(incoming)
+        assigned_today = set()
 
-        # 2) build candidate order for today: incoming first (fairness), then others
-        todays_names = [n for n in employees if n not in incoming]
-        rng.shuffle(todays_names)
-        ordered = incoming + todays_names
+        incoming = list(deferred.get(di, []))
+        random.shuffle(incoming)
 
-        # 3) ranking-aware fill: pass for rank 1, then 2, then 3
+        rest = [n for n in names if n not in incoming]
+        random.shuffle(rest)
+        ordered = incoming + rest
+
         for rank in range(3):
-            for name in ordered:
-                if name in daily_assigned[day]:        # already got a shift today
+            for n in ordered:
+                if n in assigned_today or days_count[n] >= MAX_DAYS_PER_EMPLOYEE:
                     continue
-                if assigned_days_count[name] >= MAX_DAYS_PER_EMPLOYEE:
+                r = prefs[n].get(day, ["off"])
+                if r == ["off"]:
                     continue
-                ranking = preferences.get(name, {}).get(day, ["off"])
-                if ranking == ["off"]:
+                preferred = r[rank]
+                if try_assign(schedule, assigned_today, days_count, day, preferred, n):
                     continue
-                preferred = ranking[rank]  # will exist because we pad to 3
-                # try preferred first
-                if try_assign(day, preferred, name, schedule, assigned_days_count, daily_assigned):
-                    continue
-                # conflict: try other shifts same day
                 for alt in SHIFTS:
                     if alt == preferred:
                         continue
-                    if try_assign(day, alt, name, schedule, assigned_days_count, daily_assigned):
+                    if try_assign(schedule, assigned_today, days_count, day, alt, n):
                         break
-                else:
-                    # still unassigned at this rank; we'll try next rank round
-                    pass
 
-        # 4) ensure minimum staffing per shift by random fill among available
-        for shift in SHIFTS:
-            while len(schedule[day][shift]) < MIN_PER_SHIFT:
-                candidates = [
-                    n for n in employees
-                    if (n not in daily_assigned[day]
-                        and assigned_days_count[n] < MAX_DAYS_PER_EMPLOYEE
-                        and preferences.get(n, {}).get(day, ["off"]) != ["off"])
-                ]
+        for sh in SHIFTS:
+            while len(schedule[day][sh]) < MIN_PER_SHIFT:
+                candidates = []
+                for n in names:
+                    if n in assigned_today: 
+                        continue
+                    if days_count[n] >= MAX_DAYS_PER_EMPLOYEE:
+                        continue
+                    r = prefs[n].get(day, ["off"])
+                    if r != ["off"]:
+                        candidates.append(n)
                 if not candidates:
-                    candidates = [
-                        n for n in employees
-                        if (n not in daily_assigned[day]
-                            and assigned_days_count[n] < MAX_DAYS_PER_EMPLOYEE)
-                    ]
+                    candidates = [n for n in names if n not in assigned_today and days_count[n] < MAX_DAYS_PER_EMPLOYEE]
                 if not candidates:
                     break
-                pick = rng.choice(candidates)
-                try_assign(day, shift, pick, schedule, assigned_days_count, daily_assigned)
+                pick = random.choice(candidates)
+                try_assign(schedule, assigned_today, days_count, day, sh, pick)
 
-        # 5) Any still-unassigned with non-off preferences? Defer to next day
         if di + 1 < len(DAYS):
-            for name in employees:
-                if (name not in daily_assigned[day]
-                    and assigned_days_count[name] < MAX_DAYS_PER_EMPLOYEE
-                    and preferences.get(name, {}).get(day, ["off"]) != ["off"]):
-                    # defer; they will be considered first tomorrow
-                    deferred_next_day[di + 1].append(name)
+            for n in names:
+                if n not in assigned_today and days_count[n] < MAX_DAYS_PER_EMPLOYEE:
+                    r = prefs[n].get(day, ["off"])
+                    if r != ["off"]:
+                        deferred[di + 1].append(n)
 
-    return schedule, assigned_days_count
-
-def print_schedule(schedule: Dict[str, Dict[str, List[str]]], totals: Dict[str,int]):
-    print("\n================ WEEKLY SCHEDULE ================\n")
-    for day in DAYS:
-        print(day)
-        for shift in SHIFTS:
-            names = schedule[day][shift]
-            show = ", ".join(names) if names else "-"
-            print(f"  {shift:<9}: {show}")
+    print("\n===== FINAL SCHEDULE =====\n")
+    for d in DAYS:
+        print(d)
+        for s in SHIFTS:
+            line = ", ".join(schedule[d][s]) if schedule[d][s] else "-"
+            print(f"  {s:<9}: {line}")
         print()
-    print("Totals (days assigned per employee, max 5):")
-    for name, cnt in sorted(totals.items()):
-        print(f"  {name:<15} {cnt}")
-    print()
-
-def write_csv(schedule, path="schedule.csv"):
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["Day","Shift","Employees"])
-        for day in DAYS:
-            for shift in SHIFTS:
-                w.writerow([day, shift, "; ".join(schedule[day][shift])])
-
-def write_md(schedule, path="schedule.md"):
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("| Day | Morning | Afternoon | Evening |\n")
-        f.write("|---|---|---|---|\n")
-        for day in DAYS:
-            row = [day]
-            for shift in SHIFTS:
-                row.append(", ".join(schedule[day][shift]) if schedule[day][shift] else "-")
-            f.write("| " + " | ".join(row) + " |\n")
-
-def write_png(schedule, path="schedule.png"):
-    try:
-        import matplotlib.pyplot as plt
-        # Build a table-like image
-        cell_text = []
-        for day in DAYS:
-            row = []
-            for shift in SHIFTS:
-                row.append("\n".join(schedule[day][shift]) if schedule[day][shift] else "-")
-            cell_text.append(row)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.axis("off")
-        tbl = ax.table(
-            cellText=cell_text,
-            rowLabels=DAYS,
-            colLabels=[s.title() for s in SHIFTS],
-            loc="center",
-        )
-        tbl.scale(1, 2)
-        plt.tight_layout()
-        fig.savefig(path, dpi=200, bbox_inches="tight")
-        plt.close(fig)
-        print(f"Saved {path}")
-    except Exception as e:
-        print(f"(Skipping PNG export) {e}")
-
-def main():
-    print("== Employee Scheduler (Python) ==")
-    # Collect
-    prefs = collect_preferences()
-
-    # Capacity sanity check
-    cap = len(prefs) * MAX_DAYS_PER_EMPLOYEE
-    need = len(DAYS) * len(SHIFTS) * MIN_PER_SHIFT
-    if cap < need:
-        print(f"\n[Warning] Weekly capacity {cap} < required minimum {need}. "
-              f"Some shifts may be under-staffed.\n")
-
-    # Schedule
-    schedule, totals = schedule_week(prefs, seed=RANDOM_SEED)
-
-    # Output
-    print_schedule(schedule, totals)
-    with open("preferences.json","w", encoding="utf-8") as f:
-        json.dump(prefs, f, indent=2)
-    with open("schedule.json","w", encoding="utf-8") as f:
-        json.dump(schedule, f, indent=2)
-    write_csv(schedule, "schedule.csv")
-    write_md(schedule, "schedule.md")
-    write_png(schedule, "schedule.png")
-
-    print("Wrote: preferences.json, schedule.json, schedule.csv, schedule.md, schedule.png (if matplotlib available)")
+    print("Totals (days assigned, max 5):")
+    for n in sorted(names):
+        print(f"  {n:<12} {days_count[n]}")
 
 if __name__ == "__main__":
     main()
