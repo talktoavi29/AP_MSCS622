@@ -1,0 +1,1 @@
+C:\Users\talkt\OneDrive\Documents\Backend\ Projects\AP_MSCS622\employee_scheduler\scheduler_rust\target\debug\scheduler-rust.exe: C:\Users\talkt\OneDrive\Documents\Backend\ Projects\AP_MSCS622\employee_scheduler\scheduler_rust\src\main.rs
