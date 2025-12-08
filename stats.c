@@ -39,7 +39,7 @@ int *mode(const int *sorted, int n, int *outCount) {
     if (currFreq > maxFreq) maxFreq = currFreq;
 
     if (maxFreq == 1) {
-        *outCount = 0; // no mode if all values unique
+        *outCount = 0;
         return NULL;
     }
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < modeCount; i++) {
             printf("%d%s", modes[i], (i == modeCount - 1) ? "" : ", ");
         }
-        printf(" (frequency=%d)\n", 0); // optional, remove if you want
+        printf(" (frequency=%d)\n", 0);
     }
 
     free(arr);
