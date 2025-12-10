@@ -6,7 +6,7 @@
 writeln(X) :- write(X), nl.
 
 % -----------------------------
-% Gender facts (grouped)
+% Facts: Gender
 % -----------------------------
 male(robert).
 male(peter).
@@ -23,15 +23,13 @@ female(olivia).
 female(mia).
 
 % -----------------------------
-% Parent facts
+% Facts: Parent Relationships
 % -----------------------------
-
 % Generation 1 -> 2
 parent(robert, john).
 parent(linda, john).
 parent(robert, kate).
 parent(linda, kate).
-
 parent(peter, emma).
 parent(susan, emma).
 parent(peter, mark).
@@ -42,14 +40,13 @@ parent(john, alex).
 parent(emma, alex).
 parent(john, olivia).
 parent(emma, olivia).
-
 parent(kate, noah).
 parent(mark, noah).
 parent(kate, mia).
 parent(mark, mia).
 
 % -----------------------------
-% Derived relationship rules
+% Rules: Derived Relationships
 % -----------------------------
 
 % child(X, Y): X is child of Y
@@ -74,7 +71,7 @@ cousin(X, Y) :-
     X \= Y.
 
 % -----------------------------
-% Recursive logic
+% Recursive Logic
 % -----------------------------
 
 % descendant(D, A): D is descendant of A
@@ -88,35 +85,35 @@ descendant(D, A) :-
 ancestor(A, D) :-
     descendant(D, A).
 
-% convenience rules
+% -----------------------------
+% Convenience Rules (for specific queries)
+% -----------------------------
 children_of(P, C) :- parent(P, C).
 siblings_of(X, S) :- sibling(X, S).
 
 % -----------------------------
-% Main for online compilers
+% Main Entry Point (for non-interactive compilers)
 % -----------------------------
-
 main :-
-    writeln("Family Tree Loaded."),
-    writeln("Sample outputs:"),
-
-    writeln("Children of john:"),
+    writeln('--- Family Tree Execution ---'),
+    
+    writeln('1. Children of John:'),
     findall(X, children_of(john, X), KidsJohn),
     writeln(KidsJohn),
-
-    writeln("Siblings of john:"),
+    
+    writeln('2. Siblings of John:'),
     findall(X, siblings_of(john, X), SibJohn),
     writeln(SibJohn),
-
-    writeln("Grandchildren of robert:"),
+    
+    writeln('3. Grandchildren of Robert:'),
     findall(X, grandparent(robert, X), GcRob),
     writeln(GcRob),
-
-    writeln("Cousins of alex:"),
+    
+    writeln('4. Cousins of Alex:'),
     findall(X, cousin(alex, X), CousAlex),
     writeln(CousAlex),
-
-    writeln("Descendants of robert:"),
+    
+    writeln('5. Descendants of Robert:'),
     findall(X, descendant(X, robert), DescRob),
     writeln(DescRob).
 
